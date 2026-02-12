@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>这个按钮有什么用？</title>
+  <link rel="icon" href="./logo.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .animate-pop { animation: pop-in 280ms cubic-bezier(.2,.9,.2,1) both }
+    .shake-anim { animation: shake 520ms cubic-bezier(.36,.07,.19,.97) both }
+    .jelly-anim { animation: jelly 620ms cubic-bezier(.2,.9,.2,1) both }
+    .rainbow-bar { position: fixed; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(90deg, red, orange, yellow, green, cyan, blue, violet); box-shadow: 0 0 12px rgba(0,0,0,.2); transform: translateX(-100%); animation: sweep 1.4s ease-out forwards }
+    .crt-filter { position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0px, rgba(0,0,0,.12) 1px, transparent 2px, transparent 4px); mix-blend-mode: multiply; animation: crt-flicker 1200ms infinite alternate }
+    .magnifier { position: fixed; width: 160px; height: 160px; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255,255,255,.9), 0 10px 30px rgba(0,0,0,.25); overflow: hidden; pointer-events: none; z-index: 50; display: none }
+    .magnifier.active { display: block }
+    .btn-small { padding: 8px 16px; font-size: 14px }
+    .btn-large { padding: 24px 42px; font-size: 24px }
+    .btn-xlarge { padding: 40px 56px; font-size: 28px }
+
+    @keyframes pop-in {
+      0% { transform: translateY(-6px) scale(.96); opacity: 0 }
+      100% { transform: translateY(0) scale(1); opacity: 1 }
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0) }
+      20%, 80% { transform: translate3d(2px, 0, 0) }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0) }
+      40%, 60% { transform: translate3d(4px, 0, 0) }
+    }
+
+    @keyframes jelly {
+      0% { transform: scale3d(1,1,1) }
+      15% { transform: scale3d(1.12,0.88,1) }
+      35% { transform: scale3d(0.92,1.08,1) }
+      55% { transform: scale3d(1.06,0.94,1) }
+      75% { transform: scale3d(0.98,1.02,1) }
+      100% { transform: scale3d(1,1,1) }
+    }
+
+    .pixel-cat {
+      position: absolute;
+      top: -40px;
+      width: 24px;
+      height: 24px;
+      image-rendering: pixelated;
+      background:
+        radial-gradient(#000 60%, transparent 62%) 2px 2px/4px 4px no-repeat,
+        radial-gradient(#000 60%, transparent 62%) 18px 2px/4px 4px no-repeat,
+        linear-gradient(#000 0 0) 4px 6px/16px 12px no-repeat,
+        linear-gradient(#fff 0 0) 6px 8px/12px 8px no-repeat,
+        radial-gradient(#000 60%, transparent 62%) 8px 10px/4px 4px no-repeat,
+        radial-gradient(#000 60%, transparent 62%) 14px 10px/4px 4px no-repeat,
+        linear-gradient(#000 0 0) 6px 18px/12px 4px no-repeat;
+      animation: fall 3.2s cubic-bezier(.2,.8,.1,1) forwards, sway 2.2s ease-in-out infinite;
+    }
+
+    @keyframes fall {
+      0% { top: -40px }
+      100% { top: 110vh }
+    }
+
+    @keyframes sway {
+      0%, 100% { transform: translateX(0) rotate(0deg) }
+      50% { transform: translateX(12px) rotate(6deg) }
+    }
+
+    html.invert-now { filter: invert(1) hue-rotate(180deg) saturate(140%) contrast(110%); transition: filter 160ms ease }
+
+    .confetti-piece {
+      position: fixed;
+      width: 8px;
+      height: 12px;
+      border-radius: 2px;
+      pointer-events: none;
+      opacity: 0;
+      animation: confetti-burst var(--dur,900ms) ease-out forwards;
+    }
+
+    @keyframes confetti-burst {
+      0% { transform: translate3d(0,0,0) rotate(0deg); opacity: 1 }
+      100% { transform: translate3d(var(--dx, 0px), var(--dy, 60px), 0) rotate(var(--rot, 180deg)); opacity: 0 }
+    }
+
+    .rain-char {
+      position: fixed;
+      top: -24px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1;
+      pointer-events: none;
+      text-shadow: 0 2px 8px rgba(0,0,0,.25);
+      animation: rain-fall var(--dur, 2600ms) linear forwards;
+    }
+
+    @keyframes rain-fall {
+      0% { transform: translateY(0); opacity: 1 }
+      100% { transform: translateY(110vh); opacity: .85 }
+    }
+
+    @keyframes sweep {
+      0% { transform: translateX(-100%) }
+      100% { transform: translateX(0) }
+    }
+
+    @keyframes crt-flicker {
+      0% { opacity: .15; filter: saturate(110%) }
+      100% { opacity: .35; filter: saturate(140%) }
+    }
+
+    .magnifier > .mag-content {
+      position: absolute;
+      inset: 0;
+      transform: scale(2);
+      transform-origin: var(--mx, 0px) var(--my, 0px);
+      background: inherit;
+      backdrop-filter: none;
+    }
+  </style>
+</head>
+<body class="bg-[#f7f7f5] text-slate-900">
+  <main class="min-h-screen grid place-items-center px-6 py-10 relative overflow-hidden">
+    <div class="w-full max-w-xl text-center relative z-10">
+      <h1 class="text-3xl sm:text-4xl font-bold mb-8">这个按钮有什么用？</h1>
+      <button id="btn" class="relative inline-flex items-center justify-center rounded-full px-8 py-6 text-xl font-semibold border border-black/10 bg-gradient-to-br from-white to-[#fafafa] shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition active:scale-95" type="button">点我就知道</button>
+      <div class="mt-4 text-sm text-black/60">你已经按了 <span id="clicks">0</span> 次 <span id="combo"></span></div>
+      <div id="toast" class="hidden pointer-events-none absolute inset-x-0 -top-6 flex justify-center">
+        <div class="rounded-full bg-black text-white px-4 py-1 text-sm shadow">你和全球其他 <span id="global">…</span> 人一样无聊，按下了这个按钮</div>
+      </div>
+    </div>
+
+    <div id="cat-layer" class="fixed inset-0 pointer-events-none"></div>
+    <div id="toast-layer" class="fixed inset-0 pointer-events-none"></div>
+    <div id="rain-layer" class="fixed inset-0 pointer-events-none"></div>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

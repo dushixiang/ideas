@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>引导式呼吸</title>
+  <link rel="icon" href="./logo.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes drift {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-2%); }
+    }
+  </style>
+</head>
+<body class="bg-[#0b1220] text-white">
+  <main id="breath" class="min-h-screen flex flex-col items-center justify-center gap-8 px-6 py-10 relative overflow-hidden">
+    <div class="absolute inset-[-20%] opacity-35 animate-[drift_10s_ease-in-out_infinite] bg-[radial-gradient(circle_at_20%_50%,rgba(16,185,129,0.28),transparent_55%),radial-gradient(circle_at_80%_50%,rgba(20,184,166,0.28),transparent_55%)]" aria-hidden="true"></div>
+
+    <header class="text-center z-10">
+      <h1 class="text-4xl md:text-6xl font-light tracking-[0.2em]">引导式呼吸</h1>
+      <p class="text-emerald-200/90 text-base md:text-lg mt-2">跟随圆圈的节奏</p>
+      <p class="sr-only" id="breath-desc">跟着圆圈吸气，在最大处短暂停留，然后随着圆圈收缩缓慢吐气。</p>
+    </header>
+
+    <div class="relative grid place-items-center z-10" role="img" aria-label="呼吸练习动画" aria-describedby="breath-desc guidance" tabindex="0">
+      <div class="absolute rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.25),transparent_65%)] opacity-45 transition-all" id="halo-outer"></div>
+      <div class="absolute rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(20,184,166,0.35),transparent_60%)] opacity-55 transition-all" id="halo-mid"></div>
+      <div class="rounded-full bg-[radial-gradient(circle_at_30%_30%,#a7f3d0,#14b8a6_60%)] shadow-[0_0_72px_28px_rgba(16,185,129,0.38)] transition-all" id="core"></div>
+      <div class="absolute inset-0" id="orbit"></div>
+    </div>
+
+    <div class="text-center z-10" role="status" aria-live="polite" aria-atomic="true">
+      <div id="phase-main" class="text-3xl md:text-5xl font-light">吸气</div>
+      <div id="phase-sub" class="text-emerald-200/90 mt-2">跟随圆圈缓慢扩大</div>
+    </div>
+
+    <footer class="absolute bottom-10 text-center text-emerald-200/80 text-sm z-10">
+      <p>花费 1-2 分钟放松身心</p>
+      <p class="sr-only" id="guidance">当圆圈变大请吸气，停留片刻；圆圈收缩请缓慢呼气。</p>
+    </footer>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>奇思妙想 · 导航</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"ZCOOL KuaiLe"', '"Noto Serif SC"', 'serif'],
+            body: ['"Noto Sans SC"', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif']
+          },
+          colors: {
+            ink: '#0b0f1a',
+            coral: '#ff8a5b',
+            teal: '#2bb3a3',
+            lemon: '#f6d36b'
+          },
+          backgroundImage: {
+            mesh: 'radial-gradient(1200px 600px at 10% -10%, rgba(255,138,91,0.22), transparent 60%), radial-gradient(900px 500px at 90% 10%, rgba(43,179,163,0.22), transparent 60%), linear-gradient(160deg, #0b0f1a 0%, #151b2a 50%, #0f1420 100%)'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600;700&family=Noto+Serif+SC:wght@600;700&family=ZCOOL+KuaiLe&display=swap');
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(255, 122, 89, 0.75), rgba(15, 185, 177, 0.75));
+      border-radius: 999px;
+      border: 2px solid rgba(15, 15, 18, 0.9);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(255, 122, 89, 0.95), rgba(15, 185, 177, 0.95));
+    }
+
+    * {
+      scrollbar-color: rgba(255, 122, 89, 0.7) rgba(255, 255, 255, 0.08);
+      scrollbar-width: thin;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-mesh text-white font-body">
+  <main class="mx-auto max-w-5xl px-6 py-16">
+    <header class="mb-12">
+      <p class="text-sm uppercase tracking-[0.3em] text-white/60">Ideas Lab</p>
+      <h1 class="mt-3 font-display text-4xl md:text-6xl">奇思妙想 · 导航页</h1>
+    </header>
+
+    <section class="mb-14">
+      <h2 class="text-2xl font-semibold">✨ 项目</h2>
+      <div class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <a href="apps/a-kind-word/index.html" target="_blank" rel="noopener" class="group rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:border-coral/50 hover:bg-white/10">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg font-semibold">随机鼓励师</h3>
+            <span class="rounded-full bg-coral/20 px-2 py-1 text-xs text-coral">心情</span>
+          </div>
+          <p class="mt-3 text-sm text-white/70">点击获取一条温柔的鼓励。</p>
+        </a>
+        <a href="apps/breathe/index.html" target="_blank" rel="noopener" class="group rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:border-teal/50 hover:bg-white/10">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg font-semibold">引导式呼吸</h3>
+            <span class="rounded-full bg-teal/20 px-2 py-1 text-xs text-teal">放松</span>
+          </div>
+          <p class="mt-3 text-sm text-white/70">跟随圆圈节奏平复心绪。</p>
+        </a>
+        <a href="apps/lucky/index.html" target="_blank" rel="noopener" class="group rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:border-lemon/50 hover:bg-white/10">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg font-semibold">抛硬币</h3>
+            <span class="rounded-full bg-lemon/20 px-2 py-1 text-xs text-lemon">决策</span>
+          </div>
+          <p class="mt-3 text-sm text-white/70">正反之间，一秒定夺。</p>
+        </a>
+        <a href="apps/the-book-of-answers/index.html" target="_blank" rel="noopener" class="group rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:border-coral/50 hover:bg-white/10">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg font-semibold">答案之书</h3>
+            <span class="rounded-full bg-coral/20 px-2 py-1 text-xs text-coral">灵感</span>
+          </div>
+          <p class="mt-3 text-sm text-white/70">翻开书页，获取一句答案。</p>
+        </a>
+        <a href="apps/the-useless-button/index.html" target="_blank" rel="noopener" class="group rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:border-teal/50 hover:bg-white/10">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg font-semibold">这个按钮有什么用？</h3>
+            <span class="rounded-full bg-teal/20 px-2 py-1 text-xs text-teal">娱乐</span>
+          </div>
+          <p class="mt-3 text-sm text-white/70">点一下，世界就变了。</p>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-semibold">🎮 游戏</h2>
+      <div class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <a href="games/agent.html" target="_blank" rel="noopener" class="group rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:border-coral/50 hover:bg-white/10">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg font-semibold">赛博特工</h3>
+            <span class="rounded-full bg-coral/20 px-2 py-1 text-xs text-coral">探索</span>
+          </div>
+          <p class="mt-3 text-sm text-white/70">潜入、侦察与行动任务。</p>
+        </a>
+        <a href="games/rust.html" target="_blank" rel="noopener" class="group rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:border-teal/50 hover:bg-white/10">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg font-semibold">极光冲刺</h3>
+            <span class="rounded-full bg-teal/20 px-2 py-1 text-xs text-teal">竞速</span>
+          </div>
+          <p class="mt-3 text-sm text-white/70">速度、节奏与能量管理。</p>
+        </a>
+        <a href="games/survivor.html" target="_blank" rel="noopener" class="group rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:border-lemon/50 hover:bg-white/10">
+          <div class="flex items-start justify-between">
+            <h3 class="text-lg font-semibold">赛博幸存者</h3>
+            <span class="rounded-full bg-lemon/20 px-2 py-1 text-xs text-lemon">生存</span>
+          </div>
+          <p class="mt-3 text-sm text-white/70">高压刷怪与技能构筑。</p>
+        </a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

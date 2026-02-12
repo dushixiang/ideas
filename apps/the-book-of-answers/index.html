@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>答案之书</title>
+  <link rel="icon" href="./logo.ico" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes fade-in-down {
+      from { opacity: 0; transform: translateY(-30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes book-flip {
+      0% { transform: translateY(0) rotateY(0deg); }
+      25% { transform: translateY(-20px) rotateY(0deg); }
+      50% { transform: translateY(-20px) rotateY(90deg); }
+      75% { transform: translateY(-20px) rotateY(180deg); }
+      100% { transform: translateY(0) rotateY(180deg); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-[#fefdf9] text-slate-900">
+  <main class="min-h-screen flex items-center justify-center px-6 py-10">
+    <div class="w-full max-w-[800px] flex flex-col items-center gap-6 md:gap-10 relative" id="wrap">
+      <div id="front" class="flex flex-col items-center gap-6">
+        <h1 class="text-xl sm:text-2xl md:text-3xl text-center font-medium tracking-wide animate-[fade-in-down_0.8s_ease-out_both]">在犹豫不决时，找到内心的答案</h1>
+        <button id="book-btn" class="[perspective:2000px] animate-[fade-in_1s_ease-out_both] outline-none focus-visible:ring-2 focus-visible:ring-slate-900/40 rounded-lg" type="button" aria-label="打开答案之书">
+          <div id="book-inner" class="w-[220px] h-[300px] sm:w-[260px] sm:h-[340px] md:w-[320px] md:h-[420px] relative transition-transform duration-700 ease-in-out [transform-style:preserve-3d]">
+            <img src="./book.jpg" alt="答案之书" class="w-full h-full object-cover" />
+          </div>
+        </button>
+        <p class="text-sm sm:text-base md:text-lg text-slate-600 text-center max-w-[520px] leading-relaxed animate-[fade-in-up_1s_ease-out_both]">在心中思考一个问题，点击答案之书探索可能的答案</p>
+      </div>
+
+      <div id="answer" class="hidden w-full max-w-[600px] text-center animate-[fade-in_0.8s_ease-out_both]">
+        <div id="answer-text" class="text-2xl sm:text-3xl md:text-4xl font-medium text-slate-900 leading-snug mb-8"></div>
+        <button id="again" class="inline-flex items-center justify-center rounded-md px-5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-slate-100 hover:bg-slate-200 active:bg-slate-300/80 transition-colors" type="button">再试一次</button>
+      </div>
+
+      <div id="overlay" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-[fade-in_0.2s_ease-out_both]">
+        <div class="text-xl text-white font-medium animate-[pulse_1s_ease-in-out_infinite]">翻开中...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

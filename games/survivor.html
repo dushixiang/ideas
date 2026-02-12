@@ -47,6 +47,13 @@
     <div class="absolute top-0 left-0 w-full h-2 bg-slate-800">
         <div id="xp-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 0%"></div>
     </div>
+    <!-- 顶部血量条 -->
+    <div class="absolute top-2 left-1/2 -translate-x-1/2 w-56 h-2 bg-slate-800/80 rounded-full overflow-hidden">
+        <div id="health-bar" class="h-full bg-pink-500 transition-all duration-200" style="width: 100%"></div>
+    </div>
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 text-[10px] text-pink-300 tracking-widest">
+        <span id="health-text">100 / 100</span>
+    </div>
 
     <!-- 顶部信息 -->
     <div class="flex justify-between p-4 items-start">
@@ -95,6 +102,8 @@
     const upgradeMenu = document.getElementById('upgrade-menu');
     const upgradeOptions = document.getElementById('upgrade-options');
     const xpBar = document.getElementById('xp-bar');
+    const healthBar = document.getElementById('health-bar');
+    const healthText = document.getElementById('health-text');
     const levelDisplay = document.getElementById('level-display');
     const timerDisplay = document.getElementById('timer-display');
     const killDisplay = document.getElementById('kill-display');
@@ -370,6 +379,9 @@
         xpBar.style.width = `${(xp / xpToNextLevel) * 100}%`;
         levelDisplay.innerText = level;
         killDisplay.innerText = kills;
+        const healthRatio = Math.max(0, player.health / player.maxHealth);
+        healthBar.style.width = `${healthRatio * 100}%`;
+        healthText.innerText = `${Math.ceil(player.health)} / ${player.maxHealth}`;
 
         const mins = Math.floor(time / 60);
         const secs = Math.floor(time % 60);
