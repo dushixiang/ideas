@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>赛博幸存者 - Cyber Survivor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #020617;
+            font-family: 'Goldman', cursive;
+            user-select: none;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .neon-box {
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+            border: 1px solid rgba(34, 211, 238, 0.5);
+        }
+
+        .upgrade-card:hover {
+            background-color: rgba(34, 211, 238, 0.1);
+            border-color: rgba(34, 211, 238, 0.9);
+            transform: translateY(-4px);
+        }
+
+        @keyframes pulse-cyan {
+            0%, 100% { box-shadow: 0 0 10px rgba(34, 211, 238, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.8); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen w-screen">
+
+<!-- 游戏 UI -->
+<div id="game-ui" class="absolute inset-0 pointer-events-none z-10">
+    <!-- 顶部经验条 -->
+    <div class="absolute top-0 left-0 w-full h-2 bg-slate-800">
+        <div id="xp-bar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 0%"></div>
+    </div>
+
+    <!-- 顶部信息 -->
+    <div class="flex justify-between p-4 items-start">
+        <div class="bg-slate-900/80 p-2 rounded neon-box">
+            <div class="text-cyan-400 text-xs uppercase opacity-70">Level</div>
+            <div id="level-display" class="text-cyan-400 text-xl font-bold">1</div>
+        </div>
+        <div class="bg-slate-900/80 p-2 rounded neon-box text-center">
+            <div id="timer-display" class="text-white text-xl font-bold">00:00</div>
+        </div>
+        <div class="bg-slate-900/80 p-2 rounded neon-box text-right">
+            <div class="text-pink-500 text-xs uppercase opacity-70">Kills</div>
+            <div id="kill-display" class="text-pink-500 text-xl font-bold">0</div>
+        </div>
+    </div>
+</div>
+
+<!-- 升级菜单 -->
+<div id="upgrade-menu" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/90 hidden pointer-events-auto p-4">
+    <div class="max-w-md w-full">
+        <h2 class="text-cyan-400 text-3xl font-bold text-center mb-8 italic">LEVEL UP!</h2>
+        <div id="upgrade-options" class="space-y-4">
+            <!-- 升级选项会在这里动态生成 -->
+        </div>
+    </div>
+</div>
+
+<!-- 初始/结束菜单 -->
+<div id="overlay" class="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-6 text-center">
+    <div class="max-w-lg">
+        <h1 id="main-title" class="text-5xl md:text-7xl font-black text-cyan-400 mb-4 italic tracking-tighter">CYBER<br>SURVIVOR</h1>
+        <p id="main-desc" class="text-slate-400 mb-8">移动你的战机。自动射击敌人。收集核心。活下去。</p>
+        <button id="start-btn" class="px-12 py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xl rounded-sm transition-all transform hover:scale-105 active:scale-95 pointer-events-auto">
+            进入系统
+        </button>
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const upgradeMenu = document.getElementById('upgrade-menu');
+    const upgradeOptions = document.getElementById('upgrade-options');
+    const xpBar = document.getElementById('xp-bar');
+    const levelDisplay = document.getElementById('level-display');
+    const timerDisplay = document.getElementById('timer-display');
+    const killDisplay = document.getElementById('kill-display');
+
+    // 游戏常量与状态
+    let gameState = 'MENU';
+    let time = 0;
+    let kills = 0;
+    let score = 0;
+    let level = 1;
+    let xp = 0;
+    let xpToNextLevel = 100;
+    let lastTime = 0;
+    let spawnTimer = 0;
+    let mouse = { x: 0, y: 0, down: false };
+
+    // 实体数组
+    let player, enemies, bullets, gems, particles;
+
+    // 升级选项池
+    const upgrades = [
+        { id: 'fire_rate', name: '超频模块', desc: '射击速度提升 20%', val: 0.8 },
+        { id: 'bullet_damage', name: '重型弹药', desc: '伤害提升 25%', val: 1.25 },
+        { id: 'move_speed', name: '矢量引擎', desc: '移动速度提升 15%', val: 1.15 },
+        { id: 'bullet_size', name: '广域火控', desc: '子弹体积增加 30%', val: 1.3 },
+        { id: 'health_regen', name: '自我修复', desc: '恢复少量生命值', val: 20 }
+    ];
+
+    class Player {
+        constructor() {
+            this.x = canvas.width / 2;
+            this.y = canvas.height / 2;
+            this.radius = 15;
+            this.speed = 4;
+            this.maxHealth = 100;
+            this.health = 100;
+            this.color = '#22d3ee';
+            this.weaponTimer = 0;
+            this.fireRate = 400; // ms
+            this.bulletDamage = 1;
+            this.bulletSize = 5;
+        }
+
+        update(dt) {
+            // 向鼠标移动
+            const dx = mouse.x - this.x;
+            const dy = mouse.y - this.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            if (dist > 5) {
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+            }
+
+            // 边界限制
+            this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+            this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+
+            // 自动射击最接近的敌人
+            this.weaponTimer += dt;
+            if (this.weaponTimer >= this.fireRate) {
+                this.shoot();
+                this.weaponTimer = 0;
+            }
+        }
+
+        shoot() {
+            if (enemies.length === 0) return;
+
+            // 找到最近的敌人
+            let closest = null;
+            let minDist = Infinity;
+            enemies.forEach(e => {
+                const d = Math.sqrt((e.x - this.x)**2 + (e.y - this.y)**2);
+                if (d < minDist) {
+                    minDist = d;
+                    closest = e;
+                }
+            });
+
+            if (closest) {
+                const angle = Math.atan2(closest.y - this.y, closest.x - this.x);
+                bullets.push(new Bullet(this.x, this.y, angle, this.bulletDamage, this.bulletSize));
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            // 旋转指向鼠标
+            const angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+            ctx.rotate(angle + Math.PI/2);
+
+            // 画三角形战机
+            ctx.beginPath();
+            ctx.moveTo(0, -this.radius);
+            ctx.lineTo(this.radius, this.radius);
+            ctx.lineTo(-this.radius, this.radius);
+            ctx.closePath();
+
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.color;
+            ctx.fill();
+
+            // 护盾环
+            ctx.beginPath();
+            ctx.arc(0, 5, this.radius * 1.5, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(34, 211, 238, ${this.health/this.maxHealth})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    }
+
+    class Enemy {
+        constructor(x, y, level) {
+            this.x = x;
+            this.y = y;
+            this.radius = 12 + Math.random() * 5;
+            this.speed = 1.5 + (level * 0.1);
+            this.health = 2 + Math.floor(level / 2);
+            this.color = '#f43f5e';
+        }
+
+        update() {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            this.x += (dx / dist) * this.speed;
+            this.y += (dy / dist) * this.speed;
+
+            // 玩家碰撞
+            if (dist < this.radius + player.radius) {
+                player.health -= 0.5;
+                if (player.health <= 0) endGame();
+            }
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    class Bullet {
+        constructor(x, y, angle, damage, size) {
+            this.x = x;
+            this.y = y;
+            this.angle = angle;
+            this.speed = 8;
+            this.damage = damage;
+            this.radius = size;
+            this.life = 100;
+        }
+
+        update() {
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+            this.life--;
+        }
+
+        draw() {
+            ctx.fillStyle = '#fde047';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#fde047';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    class Gem {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.value = 25;
+            this.radius = 5;
+        }
+
+        draw() {
+            ctx.fillStyle = '#22d3ee';
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = '#22d3ee';
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y - this.radius);
+            ctx.lineTo(this.x + this.radius, this.y);
+            ctx.lineTo(this.x, this.y + this.radius);
+            ctx.lineTo(this.x - this.radius, this.y);
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * 8;
+            this.vy = (Math.random() - 0.5) * 8;
+            this.life = 1.0;
+            this.color = color;
+            this.size = Math.random() * 3 + 1;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= 0.03;
+        }
+        draw() {
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.size, this.size);
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    function init() {
+        resize();
+        player = new Player();
+        enemies = [];
+        bullets = [];
+        gems = [];
+        particles = [];
+        time = 0;
+        kills = 0;
+        level = 1;
+        xp = 0;
+        xpToNextLevel = 100;
+        lastTime = performance.now();
+        updateUI();
+    }
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    window.addEventListener('touchmove', e => {
+        mouse.x = e.touches[0].clientX;
+        mouse.y = e.touches[0].clientY;
+    }, { passive: false });
+
+    document.getElementById('start-btn').onclick = () => {
+        overlay.classList.add('hidden');
+        init();
+        gameState = 'PLAYING';
+        requestAnimationFrame(gameLoop);
+    };
+
+    function spawnEnemy() {
+        let x, y;
+        if (Math.random() < 0.5) {
+            x = Math.random() < 0.5 ? -50 : canvas.width + 50;
+            y = Math.random() * canvas.height;
+        } else {
+            x = Math.random() * canvas.width;
+            y = Math.random() < 0.5 ? -50 : canvas.height + 50;
+        }
+        enemies.push(new Enemy(x, y, level));
+    }
+
+    function updateUI() {
+        xpBar.style.width = `${(xp / xpToNextLevel) * 100}%`;
+        levelDisplay.innerText = level;
+        killDisplay.innerText = kills;
+
+        const mins = Math.floor(time / 60);
+        const secs = Math.floor(time % 60);
+        timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function checkLevelUp() {
+        if (xp >= xpToNextLevel) {
+            xp -= xpToNextLevel;
+            level++;
+            xpToNextLevel = Math.floor(xpToNextLevel * 1.2);
+            showUpgradeMenu();
+        }
+    }
+
+    function showUpgradeMenu() {
+        gameState = 'UPGRADING';
+        upgradeMenu.classList.remove('hidden');
+        upgradeOptions.innerHTML = '';
+
+        // 随机选 3 个升级
+        const shuffled = [...upgrades].sort(() => 0.5 - Math.random()).slice(0, 3);
+
+        shuffled.forEach(upg => {
+            const btn = document.createElement('button');
+            btn.className = "upgrade-card w-full p-4 bg-slate-900 border border-slate-700 text-left transition-all flex justify-between items-center pointer-events-auto";
+            btn.innerHTML = `
+                    <div>
+                        <div class="text-cyan-400 font-bold">${upg.name}</div>
+                        <div class="text-slate-400 text-sm">${upg.desc}</div>
+                    </div>
+                    <div class="text-cyan-500">>></div>
+                `;
+            btn.onclick = () => applyUpgrade(upg);
+            upgradeOptions.appendChild(btn);
+        });
+    }
+
+    function applyUpgrade(upg) {
+        switch(upg.id) {
+            case 'fire_rate': player.fireRate *= upg.val; break;
+            case 'bullet_damage': player.bulletDamage *= upg.val; break;
+            case 'move_speed': player.speed *= upg.val; break;
+            case 'bullet_size': player.bulletSize *= upg.val; break;
+            case 'health_regen': player.health = Math.min(player.maxHealth, player.health + upg.val); break;
+        }
+        upgradeMenu.classList.add('hidden');
+        gameState = 'PLAYING';
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+        gameState = 'GAMEOVER';
+        document.getElementById('main-title').innerText = "SYSTEM CRASH";
+        document.getElementById('main-title').classList.replace('text-cyan-400', 'text-pink-600');
+        document.getElementById('main-desc').innerHTML = `生存时间: ${timerDisplay.innerText}<br>最终等级: ${level}<br>消灭病毒: ${kills}`;
+        document.getElementById('start-btn').innerText = "重新启动";
+        overlay.classList.remove('hidden');
+    }
+
+    function gameLoop(now) {
+        if (gameState !== 'PLAYING') return;
+        const dt = now - lastTime;
+        lastTime = now;
+        time += dt / 1000;
+
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 背景网格效果
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.05)';
+        ctx.lineWidth = 1;
+        const gridSize = 100;
+        for(let x = (player.x % gridSize); x < canvas.width; x += gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        for(let y = (player.y % gridSize); y < canvas.height; y += gridSize) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
+
+        // 生成敌人
+        spawnTimer += dt;
+        if (spawnTimer > Math.max(200, 1000 - (time * 5))) {
+            spawnEnemy();
+            spawnTimer = 0;
+        }
+
+        // 更新实体
+        player.update(dt);
+
+        bullets.forEach((b, bi) => {
+            b.update();
+            if (b.life <= 0) bullets.splice(bi, 1);
+        });
+
+        enemies.forEach((e, ei) => {
+            e.update();
+            // 子弹碰撞
+            bullets.forEach((b, bi) => {
+                const dist = Math.sqrt((e.x - b.x)**2 + (e.y - b.y)**2);
+                if (dist < e.radius + b.radius) {
+                    e.health -= b.damage;
+                    bullets.splice(bi, 1);
+                    if (e.health <= 0) {
+                        kills++;
+                        for(let i=0; i<8; i++) particles.push(new Particle(e.x, e.y, e.color));
+                        gems.push(new Gem(e.x, e.y));
+                        enemies.splice(ei, 1);
+                    }
+                }
+            });
+        });
+
+        gems.forEach((g, gi) => {
+            const dist = Math.sqrt((player.x - g.x)**2 + (player.y - g.y)**2);
+            if (dist < 100) { // 磁铁效果
+                g.x += (player.x - g.x) * 0.1;
+                g.y += (player.y - g.y) * 0.1;
+            }
+            if (dist < player.radius + g.radius) {
+                xp += g.value;
+                gems.splice(gi, 1);
+                checkLevelUp();
+            }
+        });
+
+        particles.forEach((p, pi) => {
+            p.update();
+            if (p.life <= 0) particles.splice(pi, 1);
+        });
+
+        // 绘制实体
+        gems.forEach(g => g.draw());
+        bullets.forEach(b => b.draw());
+        enemies.forEach(e => e.draw());
+        particles.forEach(p => p.draw());
+        player.draw();
+
+        updateUI();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // 默认鼠标位置
+    mouse.x = window.innerWidth / 2;
+    mouse.y = window.innerHeight / 2;
+</script>
+</body>
+</html>

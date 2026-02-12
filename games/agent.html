@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>赛博特工 - Cyber Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Fira Code', monospace;
+            user-select: none;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .scanline {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(to right, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .hud-text {
+            text-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        .glitch-active {
+            animation: glitch 0.2s infinite;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen w-screen overflow-hidden">
+
+    <div class="scanline"></div>
+
+    <!-- UI Layer -->
+    <div id="ui-container" class="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-6">
+        <div class="flex justify-between items-start">
+            <div class="bg-black/60 border border-cyan-500/30 p-3 rounded backdrop-blur-sm">
+                <div class="text-cyan-500 text-xs uppercase tracking-widest opacity-70">Mission Status</div>
+                <div class="text-white text-lg font-bold">LEVEL: <span id="level-val">1</span></div>
+                <div class="text-cyan-400 text-sm mt-1">CORES: <span id="cores-val">0/3</span></div>
+            </div>
+            <div class="bg-black/60 border border-pink-500/30 p-3 rounded backdrop-blur-sm text-right">
+                <div class="text-pink-500 text-xs uppercase tracking-widest opacity-70">Security Alert</div>
+                <div id="alert-status" class="text-white text-lg font-bold">CLEAR</div>
+            </div>
+        </div>
+        
+        <div id="interaction-hint" class="text-cyan-500/50 text-center text-sm mb-4">
+            CLICK OR TAP TO MOVE | AVOID RED SIGHT CONES
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md transition-all duration-500">
+        <div id="modal-content" class="max-w-md w-full p-8 border border-cyan-500/50 bg-slate-950 text-center shadow-[0_0_50px_rgba(6,182,212,0.2)]">
+            <h1 id="modal-title" class="text-4xl font-black text-cyan-400 mb-2 italic tracking-tighter">CYBER AGENT</h1>
+            <div class="h-1 w-20 bg-cyan-500 mx-auto mb-6"></div>
+            <p id="modal-desc" class="text-slate-400 mb-8 leading-relaxed">
+                你是一段注入系统的病毒程序。<br>
+                绕过防火墙巡逻，收集数据碎片。<br>
+                不要被发现。
+            </p>
+            <button id="action-btn" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xl tracking-widest transition-all hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] active:scale-95 pointer-events-auto">
+                INITIALIZE
+            </button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDesc = document.getElementById('modal-desc');
+        const actionBtn = document.getElementById('action-btn');
+        const levelVal = document.getElementById('level-val');
+        const coresVal = document.getElementById('cores-val');
+        const alertStatus = document.getElementById('alert-status');
+
+        // 游戏状态
+        let gameState = 'MENU';
+        let level = 1;
+        let coresCollected = 0;
+        let totalCores = 3;
+        let lastTime = 0;
+        let particles = [];
+
+        // 实体
+        let player, guards, items, exit;
+
+        class Player {
+            constructor() {
+                this.reset();
+                this.radius = 12;
+                this.color = '#22d3ee';
+                this.target = null;
+                this.speed = 3.5;
+            }
+            reset() {
+                this.x = 100;
+                this.y = 100;
+                this.target = null;
+            }
+            update() {
+                if (this.target) {
+                    const dx = this.target.x - this.x;
+                    const dy = this.target.y - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 2) {
+                        this.x += (dx / dist) * this.speed;
+                        this.y += (dy / dist) * this.speed;
+                        // 移动粒子
+                        if (Math.random() > 0.7) {
+                            particles.push(new Particle(this.x, this.y, this.color, 0.5));
+                        }
+                    } else {
+                        this.target = null;
+                    }
+                }
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                // 绘制菱形玩家
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y - this.radius);
+                ctx.lineTo(this.x + this.radius, this.y);
+                ctx.lineTo(this.x, this.y + this.radius);
+                ctx.lineTo(this.x - this.radius, this.y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                if (this.target) {
+                    ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)';
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.target.x, this.target.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+
+        class Guard {
+            constructor(x, y, pathType = 'circle') {
+                this.x = x;
+                this.y = y;
+                this.startX = x;
+                this.startY = y;
+                this.angle = Math.random() * Math.PI * 2;
+                this.rotationSpeed = 0.02 + (level * 0.005);
+                this.viewDistance = 180 + (level * 10);
+                this.viewAngle = Math.PI / 4; // 45度
+                this.pathType = pathType;
+                this.pathTimer = 0;
+                this.radius = 15;
+            }
+            update() {
+                this.angle += this.rotationSpeed;
+                
+                if (this.pathType === 'horizontal') {
+                    this.x = this.startX + Math.sin(Date.now() / 1000) * 100;
+                } else if (this.pathType === 'vertical') {
+                    this.y = this.startY + Math.cos(Date.now() / 1000) * 100;
+                }
+
+                // 检测玩家
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if (dist < this.viewDistance) {
+                    const angleToPlayer = Math.atan2(dy, dx);
+                    let diff = angleToPlayer - this.angle;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+
+                    if (Math.abs(diff) < this.viewAngle) {
+                        gameOver();
+                    }
+                }
+            }
+            draw() {
+                // 绘制视锥
+                const gradient = ctx.createRadialGradient(this.x, this.y, 10, this.x, this.y, this.viewDistance);
+                gradient.addColorStop(0, 'rgba(244, 63, 94, 0.4)');
+                gradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.arc(this.x, this.y, this.viewDistance, this.angle - this.viewAngle, this.angle + this.viewAngle);
+                ctx.closePath();
+                ctx.fill();
+
+                // 绘制守卫主体
+                ctx.fillStyle = '#f43f5e';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#f43f5e';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // 绘制眼睛/朝向线
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + Math.cos(this.angle) * this.radius, this.y + Math.sin(this.angle) * this.radius);
+                ctx.stroke();
+            }
+        }
+
+        class Item {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 8;
+                this.collected = false;
+                this.pulse = 0;
+            }
+            draw() {
+                this.pulse += 0.1;
+                const s = this.radius + Math.sin(this.pulse) * 3;
+                ctx.fillStyle = '#fbbf24';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#fbbf24';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, life = 1.0) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.life = life;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = Math.random() * 3 + 1;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.02;
+            }
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function initLevel() {
+            resize();
+            player = new Player();
+            guards = [];
+            items = [];
+            particles = [];
+            coresCollected = 0;
+            totalCores = 2 + level;
+            
+            // 随机生成物品
+            for (let i = 0; i < totalCores; i++) {
+                items.push(new Item(
+                    150 + Math.random() * (canvas.width - 300),
+                    150 + Math.random() * (canvas.height - 300)
+                ));
+            }
+
+            // 随机生成守卫
+            const guardCount = 1 + Math.floor(level / 1.5);
+            const types = ['static', 'horizontal', 'vertical'];
+            for (let i = 0; i < guardCount; i++) {
+                guards.push(new Guard(
+                    200 + Math.random() * (canvas.width - 400),
+                    200 + Math.random() * (canvas.height - 400),
+                    types[Math.floor(Math.random() * types.length)]
+                ));
+            }
+
+            // 出口在远端
+            exit = {
+                x: canvas.width - 80,
+                y: canvas.height - 80,
+                radius: 30,
+                active: false
+            };
+
+            updateUI();
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (gameState === 'PLAYING') {
+                player.target = { x: e.clientX, y: e.clientY };
+                // 点击特效
+                for(let i=0; i<5; i++) particles.push(new Particle(e.clientX, e.clientY, '#22d3ee', 0.5));
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (gameState === 'PLAYING') {
+                const touch = e.touches[0];
+                player.target = { x: touch.clientX, y: touch.clientY };
+                if (e.cancelable) e.preventDefault();
+            }
+        }, { passive: false });
+
+        actionBtn.onclick = () => {
+            if (gameState === 'MENU' || gameState === 'GAMEOVER') {
+                level = 1;
+                initLevel();
+            } else if (gameState === 'WIN') {
+                level++;
+                initLevel();
+            }
+            modalOverlay.classList.add('opacity-0');
+            setTimeout(() => {
+                modalOverlay.classList.add('hidden');
+                gameState = 'PLAYING';
+                lastTime = performance.now();
+                requestAnimationFrame(gameLoop);
+            }, 300);
+        };
+
+        function updateUI() {
+            levelVal.innerText = level;
+            coresVal.innerText = `${coresCollected}/${totalCores}`;
+        }
+
+        function gameOver() {
+            if (gameState !== 'PLAYING') return;
+            gameState = 'GAMEOVER';
+            document.body.classList.add('glitch-active');
+            
+            setTimeout(() => {
+                document.body.classList.remove('glitch-active');
+                modalTitle.innerText = "CONNECTION LOST";
+                modalTitle.className = "text-4xl font-black text-pink-500 mb-2 italic tracking-tighter";
+                modalDesc.innerHTML = `检测到非法入侵，你的程序已被防火墙粉碎。<br>最终进度: LEVEL ${level}`;
+                actionBtn.innerText = "REBOOT SYSTEM";
+                modalOverlay.classList.remove('hidden');
+                setTimeout(() => modalOverlay.classList.remove('opacity-0'), 10);
+            }, 500);
+        }
+
+        function winLevel() {
+            gameState = 'WIN';
+            modalTitle.innerText = "UPLOAD COMPLETE";
+            modalTitle.className = "text-4xl font-black text-green-400 mb-2 italic tracking-tighter";
+            modalDesc.innerHTML = `成功窃取数据。正在准备进入更深层的系统网络...`;
+            actionBtn.innerText = "PROCEED TO NEXT";
+            modalOverlay.classList.remove('hidden');
+            setTimeout(() => modalOverlay.classList.remove('opacity-0'), 10);
+        }
+
+        function gameLoop(now) {
+            if (gameState !== 'PLAYING') return;
+            const dt = now - lastTime;
+            lastTime = now;
+
+            // 清屏
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 背景网格
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.03)';
+            ctx.lineWidth = 1;
+            for(let x=0; x<canvas.width; x+=50) {
+                ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for(let y=0; y<canvas.height; y+=50) {
+                ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            // 更新守卫
+            guards.forEach(g => {
+                g.update();
+                g.draw();
+            });
+
+            // 更新物品
+            items.forEach(item => {
+                if (!item.collected) {
+                    item.draw();
+                    const dx = player.x - item.x;
+                    const dy = player.y - item.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < player.radius + item.radius) {
+                        item.collected = true;
+                        coresCollected++;
+                        updateUI();
+                        // 收集特效
+                        for(let i=0; i<15; i++) particles.push(new Particle(item.x, item.y, '#fbbf24', 0.8));
+                        if (coresCollected >= totalCores) exit.active = true;
+                    }
+                }
+            });
+
+            // 绘制出口
+            if (exit.active) {
+                ctx.save();
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#4ade80';
+                ctx.strokeStyle = '#4ade80';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([10, 5]);
+                ctx.beginPath();
+                ctx.arc(exit.x, exit.y, exit.radius + Math.sin(Date.now()/200)*5, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 内部旋涡
+                ctx.rotate(Date.now() / 1000);
+                ctx.fillStyle = 'rgba(74, 222, 128, 0.2)';
+                ctx.beginPath();
+                ctx.rect(exit.x - 10, exit.y - 10, 20, 20);
+                ctx.fill();
+                ctx.restore();
+
+                const dx = player.x - exit.x;
+                const dy = player.y - exit.y;
+                if (Math.sqrt(dx*dx + dy*dy) < exit.radius) {
+                    winLevel();
+                }
+            } else {
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.beginPath();
+                ctx.arc(exit.x, exit.y, exit.radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 更新粒子
+            particles.forEach((p, i) => {
+                p.update();
+                p.draw();
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+
+            // 更新玩家
+            player.update();
+            player.draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 预初始化
+        initLevel();
+        ctx.fillStyle = '#050505';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+    </script>
+</body>
+</html>
